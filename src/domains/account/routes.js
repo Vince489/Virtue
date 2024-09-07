@@ -115,7 +115,6 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid or expired token" });
     }
     const passwordId = decoded.passwordId;
-    console.log("Password ID:", passwordId);
 
     // Retrieve the password document from MongoDB
     const passwordEntry = await Password.findById(passwordId);

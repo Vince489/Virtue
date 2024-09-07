@@ -26,7 +26,7 @@ POST http://localhost:5700/api/v2/account
 Content-Type: application/json
 
 {
-  "password": "7777"
+  "password": "8999"
 }
 
 ###
@@ -35,5 +35,5 @@ POST http://localhost:5700/api/v2/account/login
 Content-Type: application/json
 
 {
-  "password": "7777"
+  "password": "8999"
 }
