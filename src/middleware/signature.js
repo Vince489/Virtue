@@ -2,7 +2,6 @@ const Keypair = require('../utils/keypair');
 
 const verifySignature = async (req, res, next) => {
     const { message, signature, publicKey } = req.body; 
-
     try {
         // Verify the message signature
         if (Keypair.verify(message, signature, publicKey)) {
