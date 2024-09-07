@@ -26,15 +26,14 @@ POST http://localhost:5700/api/v2/account
 Content-Type: application/json
 
 {
-  "password": "123456"
+  "password": "7777"
 }
 
 ###
 // Login
 POST http://localhost:5700/api/v2/account/login
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXNzd29yZElkIjoiNjZkYTgwNjA3NjMxMTNmZDEwMDc4ZmFjIiwiaWF0IjoxNzI1NTk1NzQ0LCJleHAiOjE3MjU1OTkzNDR9.EkBmc6auzmdLM-5bIsPu30N5yKywoJjcbf0Qch6nIt8
 
 {
-  "password": "123456"
+  "password": "7777"
 }

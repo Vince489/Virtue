@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const accountSchema = new mongoose.Schema({
+  passwordId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Password',
+    unique: true
+  },
   seedPhrase: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SeedPhrase',

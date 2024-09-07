@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const express = require("express");
 const router = express.Router();
 const Mnemonic = require("./../../utils/seedPhrase"); // Your custom Mnemonic class
@@ -10,13 +8,17 @@ const VRTAccount = require("./../vrtAccount/model");
 const Password = require("./../password/model");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser'); // Make sure you have cookie-parser installed
+
+// Use cookie-parser middleware
+router.use(cookieParser());
 
 // Create a new account 
 router.post('/', async (req, res, next) => {
   try {
     // 1. Generate seed phrase and keypair using your custom classes
     const keypair = Keypair.generate();
-    const seedPhrase = Mnemonic.generate()
+    const seedPhrase = Mnemonic.generate();
 
     // 2. Hash the password before saving it
     const { password } = req.body;
@@ -40,7 +42,6 @@ router.post('/', async (req, res, next) => {
     });
     await passwordEntry.save();
 
-
     // 4. Create a new VRTAccount associated with the account
     const vrtAccount = new VRTAccount({
       publicKey: keypair.publicKey,
@@ -51,6 +52,7 @@ router.post('/', async (req, res, next) => {
 
     // 5. Create the account and save in DB
     const newAccount = new Account({
+      passwordId: passwordEntry._id,
       seedPhrase: newSeedPhrase._id, 
       publicKey: keypair.publicKey,
       privateKey: keypair.privateKey,
@@ -70,9 +72,9 @@ router.post('/', async (req, res, next) => {
     // 9. Send JWT in an HttpOnly cookie
     res.cookie('session_token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'Strict',
-      maxAge: 3600000
+      secure: false, // Change to true in production with HTTPS
+      sameSite: 'Strict', // Change to 'Strict' based on requirements
+      maxAge: 3600000 // 1 hour
     });
 
     // 10. Respond with the account info
@@ -97,15 +99,11 @@ router.post("/login", async (req, res, next) => {
       return res.status(400).json({ error: "Password is required" });
     }
 
-    // Extract the JWT token from the Authorization header
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: "Authentication token is required" });
-    }
-
-    const token = authHeader.split(' ')[1];
+    // Extract the JWT token from the cookies
+    const token = req.cookies.session_token;
     if (!token) {
-      return res.status(401).json({ error: "Invalid token format" });
+      console.log("No token found in cookies"); // Debugging line
+      return res.status(401).json({ error: "Authentication token is required" });
     }
 
     // Verify JWT and extract passwordId
@@ -113,9 +111,11 @@ router.post("/login", async (req, res, next) => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
+      console.log("Token verification failed", err); // Debugging line
       return res.status(401).json({ error: "Invalid or expired token" });
     }
     const passwordId = decoded.passwordId;
+    console.log("Password ID:", passwordId);
 
     // Retrieve the password document from MongoDB
     const passwordEntry = await Password.findById(passwordId);
