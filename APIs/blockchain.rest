@@ -1,0 +1,40 @@
+###
+// Create a new blockchain
+POST http://localhost:5700/api/v2/blockchain/create
+Content-Type: application/json
+
+{
+  "name": "juroz",
+  "consensusRules": {
+    "consensusAlgorithm": "Proof of Stake, Proof of History",
+    "maxValidators": 20,
+    "proposalThreshold": 75,
+    "upgradeProtocol": "BFT",
+    "signingAlgorithm": "ECDSA",
+    "curve": "curve25519"
+  }
+}
+
+###
+// Get all blocks
+GET http://localhost:5700/api/v2/block
+
+
+###
+// Create a new account
+POST http://localhost:5700/api/v2/account
+Content-Type: application/json
+
+{
+  "password": "123456"
+}
+
+###
+// Login
+POST http://localhost:5700/api/v2/account/login
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwYXNzd29yZElkIjoiNjZkYTgwNjA3NjMxMTNmZDEwMDc4ZmFjIiwiaWF0IjoxNzI1NTk1NzQ0LCJleHAiOjE3MjU1OTkzNDR9.EkBmc6auzmdLM-5bIsPu30N5yKywoJjcbf0Qch6nIt8
+
+{
+  "password": "123456"
+}
