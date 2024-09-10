@@ -2,131 +2,114 @@ const express = require("express");
 const router = express.Router();
 const Token = require("./model");
 const Keypair = require("./../../utils/keypair");
-const authenticateToken = require('../../middleware/authenticateToken');
 const TokenAccount = require('../tokenAccount/model');
-const { associateTokenAccount } = require('../../middleware/openAccount');
 const Account = require('../account/model');
 
 
-
-
-// Create a new token
-router.post('/', authenticateToken, async (req, res) => {
+// POST /api/v2/token - Create a new token
+router.post('/', async (req, res) => {
   try {
-    const {
-      name,
-      uri,
-      symbol,
-    } = req.body;
+    const { name, uri, symbol, mintAuthority, freezeAuthority } = req.body;
 
-    // Perform validation checks, e.g., checking if required fields are present
-
-    if (!symbol || !name) {
+    // Validate required fields
+    if (!name || !symbol || !uri || !mintAuthority) {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
-    // Generate a key pair using the Keypair library
+    // Generate a new publicKey for the token (could be custom logic or use your existing Keypair class)
     const keypair = Keypair.generate();
-    const publicKey = keypair.publicKey;    
+    const publicKey = keypair.publicKey;
 
-    // Check if token already exists in the database with the same publicKey, symbol, or name
-    const existingToken = await Token.findOne({ $or: [{ mint: publicKey }, { symbol }, { name }] })
+    // Check if token with the same name, symbol, or mint already exists
+    const existingToken = await Token.findOne({
+      $or: [{ mint: publicKey }, { symbol }, { name }]
+    });
 
     if (existingToken) {
-      return res.status(400).json({ message: 'Token with the same name, mint, or symbol already exists' });
+      return res.status(400).json({ message: 'Token with the same name, mint, or symbol already exists.' });
     }
 
-
-    // Create a new token
+    // Create the new token object with mintAuthority and freezeAuthority as strings
     const token = new Token({
       name,
       mint: publicKey,
-      address: publicKey,
-      mintAuthority: req.gamer.gamer.gamer._id,
+      address: publicKey,  // Assuming mint and address are the same
+      mintAuthority,  // Use the mintAuthority string provided in the request body
+      freezeAuthority: freezeAuthority || null,  // Optional freeze authority
       uri,
-      symbol,
+      symbol
     });
 
-    // Save the new token to the database
+    // Save the token in the database
     await token.save();
 
-    // Respond with the newly created token
-    res.status(200).json({ message: 'Token created successfully.', token });
+    // Respond with the created token
+    res.status(201).json({ message: 'Token created successfully.', token });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/mint', authenticateToken, async (req, res, next) => {
+// POST /api/v2/token/mint - Mint new tokens to a generated token account
+router.post('/mint', async (req, res) => {
   try {
-    const { mintAmount } = req.body;
+    const { tokenId, ownerId, amount } = req.body;
 
-    // Check if the required mintAmount is provided
-    if (!mintAmount || isNaN(mintAmount) || mintAmount <= 0) {
-      return res.status(400).json({ error: 'Invalid or missing mintAmount.' });
+    // Validate required fields
+    if (!tokenId || !ownerId || !amount || amount <= 0) {
+      return res.status(400).json({ error: 'Missing required fields or invalid amount.' });
     }
 
-    // Extract the gamer ID from the decoded token
-    const gamerId = req.gamer.gamer.gamer._id;
-
-    // Retrieve the token based on the gamer ID
-    const token = await Token.findOne({ mintAuthority: gamerId });
-
+    // Find the token by ID
+    const token = await Token.findById(tokenId);
     if (!token) {
-      return res.status(404).json({ error: 'Token not found for the provided mintAuthority.' });
+      return res.status(404).json({ error: 'Token not found.' });
     }
 
-    // Check if the token's mintAuthority matches the gamer's ID
-    if (token.mintAuthority.toString() !== gamerId.toString()) {
-      return res.status(403).json({ error: 'Permission denied. MintAuthority does not match.' });
+    // Find the owner by ID
+    const owner = await Account.findById(ownerId);
+    if (!owner) {
+      return res.status(404).json({ error: 'Owner account not found.' });
     }
 
-    // Check if the gamer already has a token account
-    const existingTokenAccount = await TokenAccount.findOne({ owner: gamerId, token: token._id });
+    // Generate a new publicKey for the token account (could be custom logic or use your existing Keypair class)
+    const keypair = Keypair.generate();
+    const publicKey = keypair.publicKey;
 
-    // Create a new token account or use the existing one
-    const newTokenAccount = existingTokenAccount || new TokenAccount({
-      owner: gamerId,
+    // Check if a TokenAccount already exists for this owner and token
+    const existingTokenAccount = await TokenAccount.findOne({ owner: ownerId, token: tokenId });
+    if (existingTokenAccount) {
+      return res.status(400).json({ message: 'Token account already exists for this owner and token.' });
+    }
+
+    // Create a new token account for the owner
+    const tokenAccount = new TokenAccount({
+      owner: owner._id,
       token: token._id,
-      publicKey: Keypair.generate().publicKey,
-      balance: 0, // Initialize balance to 0 for new accounts
+      publicKey,  // Generated public key
+      balance: amount,  // Start with the minted amount
     });
 
-    // Update the balance (add mintAmount)
-    newTokenAccount.balance += mintAmount;
+    // Save the token account in the database
+    await tokenAccount.save();
 
-    // Save the new token account to the database if it's a new account
-    if (!existingTokenAccount) {
-      await newTokenAccount.save();
-    } else {
-      // Update the existing token account's balance
-      await TokenAccount.findOneAndUpdate(
-        { _id: existingTokenAccount._id },
-        { balance: newTokenAccount.balance },
-        { new: true }
-      );
-    }
-
-    // Update the token's totalSupply and save
-    token.totalSupply += mintAmount;
+    // Update the total supply of the token
+    token.totalSupply += amount;
     await token.save();
 
+    // Respond with the created token account
+    res.status(201).json({ message: 'Tokens minted successfully.', tokenAccount, totalSupply: token.totalSupply });
 
-
-    // Respond with success message and updated tokenAccount balance
-    res.status(200).json({
-      message: 'Token minted successfully.',
-      balance: newTokenAccount.balance,
-    });
   } catch (error) {
-    console.error('Error minting tokens:', error.message);
-    next(error);
+    res.status(500).json({ error: error.message });
   }
 });
 
+
 // Endpoint to mint tokens
 
-router.post('/mint2', authenticateToken, async (req, res, next) => {
+router.post('/mint2', async (req, res, next) => {
   try {
     const { mintAmount } = req.body;
 
@@ -202,7 +185,7 @@ router.post('/mint2', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.post('/mint3', authenticateToken, async (req, res, next) => {
+router.post('/mint3', async (req, res, next) => {
   try {
     const { mintAmount } = req.body;
 
@@ -273,7 +256,7 @@ router.post('/mint3', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.post('/mint4', authenticateToken, async (req, res, next) => {
+router.post('/mint4', async (req, res, next) => {
 
   try {
     const { mintAmount } = req.body;

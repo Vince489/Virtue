@@ -5,7 +5,6 @@ const tokenAccountSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Account', 
-    required: true,
   },
   token: {
     type: mongoose.Schema.Types.ObjectId,

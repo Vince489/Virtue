@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Validator = require('../validator/model'); // Import the Validator model
 const Transaction = require('../transaction/model'); // Import the Transaction model
-const verifyToken = require('../../middleware/auth');
 const Keypair = require('../../utils/keypair');
 
 // Create a new route for the validation process

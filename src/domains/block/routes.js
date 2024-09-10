@@ -48,48 +48,6 @@ router.post("/genesis", async (req, res, next) => {
 
 
 
-async function initializeBlockchain() {
-  try {
-    // Create the genesis block
-    const genesisBlock = new Block({
-      index: 0,
-      previousHash: '0', // Genesis block has no previous hash
-      timestamp: new Date().toISOString(),
-      data: 'Genesis Block Data', // You can add any initial data here
-      nonce: 0, // You may set the nonce as needed
-    });
-
-    // Save the genesis block to the database
-    await genesisBlock.save();
-
-    // Define the initial consensus rules
-    const initialConsensusRules = {
-      consensusAlgorithm: 'Proof of Stake',
-      maxValidators: 20,
-      proposalThreshold: 75,
-      upgradeProtocol: 'BFT',
-    };
-
-    // Create the blockchain and set its properties
-    const blockchain = new Blockchain({
-      name: 'YourBlockchainName',
-      blocks: [genesisBlock._id], // Store the ID of the genesis block
-      consensusRules: initialConsensusRules,
-    });
-
-    // Save the blockchain to the database
-    await blockchain.save();
-
-    console.log('Blockchain initialized with the genesis block.');
-  } catch (error) {
-    console.error('Blockchain initialization failed:', error);
-  }
-}
-
-// Call the initialization function to set up your blockchain
-// initializeBlockchain();
-
-
 // Create a new block
 router.post("/", async (req, res, next) => {
   try {
@@ -117,7 +75,6 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// Assuming you have defined the Blockchain model and imported it
 
 // Add a new transaction to the pending transactions of a specific blockchain
 router.post("/:blockchainId/addTransaction", async (req, res, next) => {

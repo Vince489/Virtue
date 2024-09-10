@@ -6,11 +6,6 @@ const accountSchema = new mongoose.Schema({
     ref: 'Password',
     unique: true
   },
-  seedPhrase: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'SeedPhrase',
-    unique: true
-  },
   publicKey: {
     type: String,
     unique: true
@@ -21,7 +16,7 @@ const accountSchema = new mongoose.Schema({
   },
   vrtAccount: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'VRTAccount',  // Use the exact model name
+    ref: 'VRTAccount', 
   },
   tokenAccount: [{
     type: mongoose.Schema.Types.ObjectId,

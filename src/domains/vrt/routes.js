@@ -95,7 +95,7 @@ router.post("/", async (req, res, next) => {
 });
 
 // AirDrop VRT token to an account
-router.post("/airdrop", verifyToken, async (req, res, next) => {
+router.post("/airdrop", async (req, res, next) => {
   try {
     const amount = 100
     // Find the gamer's account using their publicKey
@@ -139,7 +139,7 @@ router.post("/airdrop", verifyToken, async (req, res, next) => {
   }
 });
 
-router.post("/airdrop2", verifyToken, async (req, res, next) => {
+router.post("/airdrop2", async (req, res, next) => {
   try {
   const amount = 100
     // Set the default sender's public key
@@ -230,7 +230,7 @@ router.post("/airdrop2", verifyToken, async (req, res, next) => {
 });
 
 // Retrieve VRT data for the wallet
-router.get("/", verifyToken, async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
     // Fetch the VRT data from the database
     const vrtData = await VRT.findOne({ symbol: "VRT" });

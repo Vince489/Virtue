@@ -1,4 +1,4 @@
-router.post('/mint', authenticateToken, async (req, res, next) => {
+router.post('/mint', async (req, res, next) => {
   const gamer = req.gamer.gamer.gamer;
   console.log(gamer);
 

@@ -1,10 +1,11 @@
 const express = require("express");
 const router = express.Router();
+
 const Blockchain = require('../blockchain/model');
 const Block = require('../block/model');
 
 // Initialize a new blockchain
-router.post("/create", async (req, res, next) => {
+router.post("/init", async (req, res, next) => {
   try {
     const { name, consensusRules } = req.body;
 

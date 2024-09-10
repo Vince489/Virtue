@@ -7,8 +7,6 @@ const VRTAccount = require("../vrtAccount/model");
 const Account = require("../account/model");
 const Gamer = require("../gamer/model");
 const PendingTransaction = require("../pendingTransactions/model");
-const verifyToken = require("../../middleware/auth");
-const { associateVrtAccountAD } = require("../../utils/openAccount");
 const Transaction = require("../transaction/model");
 const Block = require("../block/model");
 const Validator = require("../validator/model");
@@ -136,7 +134,7 @@ router.post('/fundAirdrop', async (req, res, next) => {
   }
 });
 
-router.post("/airdrop", verifyToken, async (req, res) => {
+router.post("/airdrop", async (req, res) => {
   try {
     const amount = 100;
     const { publicKey } = req.body;
@@ -389,7 +387,7 @@ function calculateBlockHash(block) {
   return crypto.createHash('sha256').update(dataToHash).digest('hex');
 }
 
-router.post("/transfer", verifyToken, async (req, res) => {
+router.post("/transfer", async (req, res) => {
   try {
     const { recipientPublicKey, amount } = req.body;
     const senderGamerId = req.gamer._id;

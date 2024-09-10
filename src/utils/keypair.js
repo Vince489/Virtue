@@ -1,5 +1,6 @@
 const nacl = require('tweetnacl');
 const bs58 = require('bs58');
+const bip39 = require('bip39');
 
 // Keypair class to handle crypto key operations
 class Keypair {
@@ -23,6 +24,23 @@ class Keypair {
       throw new Error(`Failed to generate key pair: ${error.message}`);
     }
   }
+
+// Generate keypair from seed phrase
+static fromSeedPhrase(seedPhrase) {
+  try {
+    // Convert seed phrase to a 64-byte seed and take the first 32 bytes
+    const seed = bip39.mnemonicToSeedSync(seedPhrase).slice(0, 32);
+    
+    // Generate keypair from the 32-byte seed
+    const { publicKey, secretKey } = nacl.sign.keyPair.fromSeed(seed);
+    
+    // Return the keypair encoded in base58
+    return new Keypair(bs58.encode(publicKey), bs58.encode(secretKey));
+  } catch (error) {
+    throw new Error(`Failed to generate keypair from seed phrase: ${error.message}`);
+  }
+}
+
 
   static sign(message, privateKey) {
     try {

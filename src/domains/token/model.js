@@ -26,12 +26,12 @@ const tokenSchema = new mongoose.Schema({
     unique: true,
   },
   mintAuthority: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Account', 
+    type: String,
+    required: true,
   },
   freezeAuthority: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Account', 
+    type: String,
+    required: true,
   },
   totalSupply: {
     type: Number,
