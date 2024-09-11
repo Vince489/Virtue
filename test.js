@@ -1,9 +1,14 @@
-const bs58 = require('bs58');
+const Keypair = require('./src/utils/keypair');
 
-// Convert the string to a buffer
-const buffer = Buffer.from('hello world');
+// Example usage
+const { seedPhrase, keypair } = Keypair.generate(); // Generate keypair and seed phrase
+console.log('Generated Seed Phrase:', seedPhrase);
+console.log('Generated Public Key:', keypair.publicKey);
+console.log('Generated Private Key:', keypair.privateKey);
 
-// Encode the buffer to base58
-const ruy = bs58.encode(buffer);
+// Recover the keypair using the same seed phrase
+const recoveredKeypair = Keypair.fromSeedPhrase(seedPhrase);
+console.log('Recovered Public Key:', recoveredKeypair.publicKey);
+console.log('Recovered Private Key:', recoveredKeypair.privateKey);
 
-console.log(ruy); // Encoded base58 string
+module.exports = Keypair;

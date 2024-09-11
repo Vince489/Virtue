@@ -1,0 +1,29 @@
+###
+// Create Native Coin
+POST http://localhost:5700/api/v2/vrt
+
+
+###
+// Create Token
+POST http://localhost:5700/api/v2/token
+Content-Type: application/json
+
+{
+  "name": "Boxing Nation Virtron",
+  "uri": "BNV.COM",
+  "symbol": "BNV",
+  "mintAuthority": "BcufQkSjvdRakmnYejBUos6QJQGhETD36qvjNvtpBALa",
+  "freezeAuthority": "BcufQkSjvdRakmnYejBUos6QJQGhETD36qvjNvtpBALa"
+}
+
+###
+// Mint Tokens
+POST http://localhost:5700/api/v2/token
+Content-Type: application/json
+
+{
+  "tokenId": "66e08903741a235cd4eab3da", 
+  "ownerId": "66da72256b44c4c3fbb07c06", 
+  "amount": 1000000
+}
+

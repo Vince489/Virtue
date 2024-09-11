@@ -1,55 +1,54 @@
 const nacl = require('tweetnacl');
 const bs58 = require('bs58');
-const bip39 = require('bip39');
+const Mnemonic = require('./seedPhrase');
+const crypto = require('crypto');
 
 // Keypair class to handle crypto key operations
 class Keypair {
-  constructor() {
-    try {
-      const { publicKey, secretKey } = nacl.sign.keyPair();
-      if (!publicKey || !secretKey) {
-        throw new Error('Could not generate keypair');
-      }
-      this.publicKey = bs58.encode(publicKey);
-      this.privateKey = bs58.encode(secretKey);
-    } catch (error) {
-      throw new Error(`Could not generate key pair: ${error.message}`);
-    }
+  constructor(publicKey, secretKey) {
+    this.publicKey = publicKey;
+    this.privateKey = secretKey;
   }
 
+  // Generate a new keypair
   static generate() {
     try {
-      return new Keypair();
+      const seedPhrase = Mnemonic.generate();
+      const seed = Mnemonic.mnemonicToSeedSync(seedPhrase.seedPhrase).slice(0, 32); // Convert seed phrase to seed
+      const { publicKey, secretKey } = nacl.sign.keyPair.fromSeed(seed);
+      return {
+        seedPhrase: seedPhrase.seedPhrase,
+        keypair: new Keypair(bs58.encode(publicKey), bs58.encode(secretKey))
+      };
     } catch (error) {
       throw new Error(`Failed to generate key pair: ${error.message}`);
     }
   }
 
-// Generate keypair from seed phrase
-static fromSeedPhrase(seedPhrase) {
-  try {
-    // Convert seed phrase to a 64-byte seed and take the first 32 bytes
-    const seed = bip39.mnemonicToSeedSync(seedPhrase).slice(0, 32);
-    
-    // Generate keypair from the 32-byte seed
-    const { publicKey, secretKey } = nacl.sign.keyPair.fromSeed(seed);
-    
-    // Return the keypair encoded in base58
-    return new Keypair(bs58.encode(publicKey), bs58.encode(secretKey));
-  } catch (error) {
-    throw new Error(`Failed to generate keypair from seed phrase: ${error.message}`);
+  // Generate a public key   
+  // Generate a simple random public key (not related to any curve)
+  static generatePublicKey() {
+    // Generate a random 32-byte public key using crypto
+    const publicKey = crypto.randomBytes(32);
+    return bs58.encode(publicKey);  // Encode it in base58 to match the format you're using
   }
-}
 
+  // Generate a keypair from a seed phrase
+  static fromSeedPhrase(seedPhrase) {
+    try {
+      const seed = Mnemonic.mnemonicToSeedSync(seedPhrase).slice(0, 32); // Convert seed phrase to seed
+      const { publicKey, secretKey } = nacl.sign.keyPair.fromSeed(seed);
+      return new Keypair(bs58.encode(publicKey), bs58.encode(secretKey));
+    } catch (error) {
+      throw new Error(`Failed to generate keypair from seed phrase: ${error.message}`);
+    }
+  }
 
   static sign(message, privateKey) {
     try {
       const messageData = new TextEncoder().encode(message);
       const privateKeyData = bs58.decode(privateKey);
       const signature = nacl.sign.detached(messageData, privateKeyData);
-      if (!signature) {
-        throw new Error('Message signing failed');
-      }
       return bs58.encode(signature);
     } catch (error) {
       throw new Error('Failed to sign message: ' + error.message);
@@ -61,11 +60,7 @@ static fromSeedPhrase(seedPhrase) {
       const messageData = new TextEncoder().encode(message);
       const signatureData = bs58.decode(signature);
       const publicKeyData = bs58.decode(publicKey);
-      const isValid = nacl.sign.detached.verify(messageData, signatureData, publicKeyData);
-      if (!isValid) {
-        throw new Error('Signature verification failed');
-      }
-      return isValid;
+      return nacl.sign.detached.verify(messageData, signatureData, publicKeyData);
     } catch (error) {
       throw new Error('Failed to verify signature: ' + error.message);
     }
@@ -121,27 +116,12 @@ static fromSeedPhrase(seedPhrase) {
 
   // Generate random IV for AES encryption
   static generateIV() {
-    return crypto.getRandomValues(new Uint8Array(12));
+    return crypto.randomBytes(12); // Use crypto.randomBytes for Node.js
   }
 
   // Generate random salt for PBKDF2
   static generateSalt() {
-    return crypto.getRandomValues(new Uint8Array(16));
-  }
-
-  // Save data to local storage
-  static saveToLocalStorage(key, value) {
-    localStorage.setItem(key, value);
-  }
-
-  // Retrieve data from local storage
-  static getFromLocalStorage(key) {
-    return localStorage.getItem(key);
-  }
-
-  // Clear local storage (on logout)
-  static clearLocalStorage() {
-    localStorage.clear();
+    return crypto.randomBytes(16); // Use crypto.randomBytes for Node.js
   }
 }
 

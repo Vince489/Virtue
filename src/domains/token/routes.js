@@ -32,8 +32,8 @@ router.post('/', async (req, res) => {
     // Create the new token object with mintAuthority and freezeAuthority as strings
     const token = new Token({
       name,
-      mint: publicKey,
-      address: publicKey,  // Assuming mint and address are the same
+      mint: 'BmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdH',
+      address: 'BmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdH',  // Assuming mint and address are the same
       mintAuthority,  // Use the mintAuthority string provided in the request body
       freezeAuthority: freezeAuthority || null,  // Optional freeze authority
       uri,

@@ -1,10 +1,10 @@
-// tokenAccount.js
 const mongoose = require('mongoose');
 
 const tokenAccountSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Account', 
+    required: true,  // Ensure owner is required
   },
   token: {
     type: mongoose.Schema.Types.ObjectId,
@@ -18,11 +18,11 @@ const tokenAccountSchema = new mongoose.Schema({
   },
   balance: {
     type: Number,
-    default: 0
+    default: 0,
   },
   isFrozen: {
     type: Boolean,
-    default: false
+    default: false,
   },
   createdAt: {
     type: Date,
@@ -33,6 +33,10 @@ const tokenAccountSchema = new mongoose.Schema({
     ref: 'Transaction',
   }],
 });
+
+// Indexes for performance improvements
+tokenAccountSchema.index({ owner: 1 });
+tokenAccountSchema.index({ token: 1 });
 
 const TokenAccount = mongoose.model('TokenAccount', tokenAccountSchema);
 

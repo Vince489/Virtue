@@ -1,10 +1,16 @@
 ###
+// Get all blocks
+GET http://localhost:5700/api/v2/block
+
+
+
+###
 // Create a new blockchain
-POST http://localhost:5700/api/v2/blockchain/create
+POST http://localhost:5700/api/v2/blockchain/init
 Content-Type: application/json
 
 {
-  "name": "juroz",
+  "name": "Virtue",
   "consensusRules": {
     "consensusAlgorithm": "Proof of Stake, Proof of History",
     "maxValidators": 20,
@@ -16,8 +22,9 @@ Content-Type: application/json
 }
 
 ###
-// Get all blocks
-GET http://localhost:5700/api/v2/block
+// Create Native Coin
+POST http://localhost:5700/api/v2/vrt
+
 
 
 ###
@@ -26,7 +33,7 @@ POST http://localhost:5700/api/v2/account
 Content-Type: application/json
 
 {
-  "password": "8999"
+  "password": "1212"
 }
 
 ###
@@ -35,5 +42,21 @@ POST http://localhost:5700/api/v2/account/login
 Content-Type: application/json
 
 {
-  "password": "8999"
+  "password": "1212"
 }
+
+
+###
+// Create Token
+POST http://localhost:5700/api/v2/token
+Content-Type: application/json
+
+{
+  "name": "Boxing Nation Virtron",
+  "uri": "BNV.COM",
+  "symbol": "BNV",
+  "mintAuthority": "ZmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdd",
+  "freezeAuthority": "ZmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdd"
+}
+
+

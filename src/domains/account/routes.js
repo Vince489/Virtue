@@ -1,95 +1,204 @@
 const express = require("express");
 const router = express.Router();
-const Mnemonic = require("./../../utils/seedPhrase"); // Your custom Mnemonic class
-const Keypair = require("./../../utils/keypair"); // Your custom Keypair class
+
+const Mnemonic = require("./../../utils/seedPhrase"); 
+const Keypair = require("./../../utils/keypair"); 
 const Account = require("./model");
-const SeedPhrase = require("./../seedPhrase/model");
 const VRTAccount = require("./../vrtAccount/model");
 const Password = require("./../password/model");
+const VRT = require("./../vrt/model");
+const Token = require("./../token/model");
+const TokenAccount = require("./../tokenAccount/model");
+const { encryptData } = require("./../../utils/encrypt-decrypt");
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser'); // Make sure you have cookie-parser installed
+const cookieParser = require('cookie-parser'); 
 
 // Use cookie-parser middleware
 router.use(cookieParser());
 
+
 // Create a new account 
 router.post('/', async (req, res, next) => {
   try {
-    // 1. Generate seed phrase and keypair using your custom classes
-    const keypair = Keypair.generate();
-    const seedPhrase = Mnemonic.generate();
+    // Generate seed phrase and derive keypair from it
+    const seedPhrase = Mnemonic.generate(); // Generate seed phrase
+    const keypair = Keypair.fromSeedPhrase(seedPhrase.seedPhrase);  // Derive keypair from the seed phrase
 
-    // 2. Hash the password before saving it
+    // Hash the password before saving it
     const { password } = req.body;
     if (!password) {
       return res.status(400).json({ error: "Password is required" });
     }
 
-    // Create a new seed phrase document
-    const newSeedPhrase = new SeedPhrase({
-      seedPhrase: seedPhrase.seedPhrase,
-    });
+    // Check for duplicate public key
+    const existingAccount = await Account.findOne({ publicKey: keypair.publicKey });
+    if (existingAccount) {
+      return res.status(400).json({ error: `Public key ${keypair.publicKey} already exists` });
+    }
 
-    // Save the new seed phrase to the database
-    await newSeedPhrase.save();
-
+    // Hash the password for security
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Create a new Password entry in the DB
+    // Encrypt the private key before storing it in the database
+    const encryptedPrivateKey = encryptData(keypair.privateKey, process.env.SECRET);
+
+    // Create a new Password entry in the DB
     const passwordEntry = new Password({
-      hashedPassword: hashedPassword
+      hashedPassword: hashedPassword,
     });
     await passwordEntry.save();
 
-    // 4. Create a new VRTAccount associated with the account
+    // Find native coin (VRT) for the user
+    const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
+
+    // Generate publickey for VRTAccount
+    const vrtAccountPublickey = Keypair.generatePublicKey();
+    // Log keypair details
+    if (!vrtAccountPublickey) {
+      throw new Error('VRTAccount publicKey is null or undefined');
+    }
+
+    // Create the VRTAccount
     const vrtAccount = new VRTAccount({
-      publicKey: keypair.publicKey,
-      balance: 0,
+      publicKey: vrtAccountPublickey,
+      coin: nativeCoin._id,
       owner: null,
     });
     await vrtAccount.save();
 
-    // 5. Create the account and save in DB
+    // Create the main account
     const newAccount = new Account({
       passwordId: passwordEntry._id,
-      seedPhrase: newSeedPhrase._id, 
       publicKey: keypair.publicKey,
-      privateKey: keypair.privateKey,
+      privateKey: encryptedPrivateKey, // Store encrypted private key
       vrtAccount: vrtAccount._id,
-      tokenAccount: [],
+      tokenAccount: [], // Initialize as an empty array
       stake: [],
     });
     await newAccount.save();
 
-    // 7. Update the VRTAccount's owner field to link back to the newly created account
+    // Update VRTAccount owner
     vrtAccount.owner = newAccount._id;
     await vrtAccount.save();
 
-    // 8. Create JWT with the password document's ID
+    // Create JWT with the password document's ID
     const token = jwt.sign({ passwordId: passwordEntry._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // 9. Send JWT in an HttpOnly cookie
+    // Send JWT in an HttpOnly cookie
     res.cookie('session_token', token, {
       httpOnly: true,
-      secure: false, // Change to true in production with HTTPS
-      sameSite: 'Strict', // Change to 'Strict' based on requirements
-      maxAge: 3600000 // 1 hour
+      secure: false,
+      sameSite: 'Strict',
+      maxAge: 3600000,
     });
 
-    // 10. Respond with the account info
-    res.json({
+    // Respond with account info
+    res.status(201).json({
       message: "Account created successfully",
       account: {
+        seedPhrase: seedPhrase.seedPhrase,
         publicKey: newAccount.publicKey,
-        vrtAccountId: vrtAccount._id,
       },
     });
 
   } catch (error) {
+    console.error('Error creating account:', error);  // More detailed error logging
     next(error);
   }
 });
+
+
+// Create a new account 
+router.post('/1', async (req, res, next) => {
+  try {
+    // Generate seed phrase and derive keypair from it
+    const seedPhrase = Mnemonic.generate(); // Generate seed phrase
+    const keypair = Keypair.fromSeedPhrase(seedPhrase.seedPhrase);  // Derive keypair from the seed phrase
+
+    // Hash the password before saving it
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: "Password is required" });
+    }
+
+    // Check for duplicate public key
+    const existingAccount = await Account.findOne({ publicKey: keypair.publicKey });
+    if (existingAccount) {
+      return res.status(400).json({ error: `Public key ${keypair.publicKey} already exists` });
+    }
+
+    // Hash the password for security
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a new Password entry in the DB
+    const passwordEntry = new Password({
+      hashedPassword: hashedPassword,
+    });
+    await passwordEntry.save();
+
+    // Find native coin (VRT) for the user
+    const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
+
+    // Generate keypair for VRTAccount
+    const vrtAccountKeypair = Keypair.generate();
+
+    // Log keypair details
+    if (!vrtAccountKeypair.keypair.publicKey) {
+      throw new Error('VRTAccount publicKey is null or undefined');
+    }
+
+    // Create the VRTAccount
+    const vrtAccount = new VRTAccount({
+      publicKey: vrtAccountKeypair.keypair.publicKey,
+      coin: nativeCoin._id,
+      owner: null,
+    });
+    await vrtAccount.save();
+
+    // Create the main account
+    const newAccount = new Account({
+      passwordId: passwordEntry._id,
+      publicKey: keypair.publicKey,
+      privateKey: keypair.privateKey,
+      vrtAccount: vrtAccount._id,
+      tokenAccount: [], // Initialize as an empty array
+      stake: [],
+    });
+    await newAccount.save();
+
+    // Update VRTAccount owner
+    vrtAccount.owner = newAccount._id;
+    await vrtAccount.save();
+
+    // Create JWT with the password document's ID
+    const token = jwt.sign({ passwordId: passwordEntry._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Send JWT in an HttpOnly cookie
+    res.cookie('session_token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Strict',
+      maxAge: 3600000,
+    });
+
+    // Respond with account info
+    res.status(201).json({
+      message: "Account created successfully",
+      account: {
+        seedPhrase: seedPhrase.seedPhrase,
+        publicKey: newAccount.publicKey,
+      },
+    });
+
+  } catch (error) {
+    console.error('Error creating account:', error);  // More detailed error logging
+    next(error);
+  }
+});
+
+
 
 // Login route
 router.post("/login", async (req, res, next) => {
@@ -130,17 +239,14 @@ router.post("/login", async (req, res, next) => {
 
     // Find the associated account (if needed)
     const account = await Account.findOne({ passwordId: passwordId }).populate("vrtAccount");
+    console.log('Account:', account); // Debugging line
     if (!account) {
       return res.status(404).json({ error: "Account not found" });
     }
 
     // Respond with account details
     res.json({
-      message: "Login successful",
-      account: {
-        publicKey: account.publicKey,
-        vrtAccountId: account.vrtAccount._id,
-      },
+      message: "Login successful"
     });
 
   } catch (error) {

@@ -12,7 +12,6 @@ const accountSchema = new mongoose.Schema({
   },
   privateKey: {
     type: String,
-    unique: true
   },
   vrtAccount: {
     type: mongoose.Schema.Types.ObjectId,
