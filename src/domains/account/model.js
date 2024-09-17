@@ -12,10 +12,9 @@ const accountSchema = new mongoose.Schema({
     required: true,
     select: false, // Hide in queries
   },
-  status: {
-    type: String,
-    enum: ['active', 'frozen', 'terminated'],
-    default: 'active',
+  isFrozen: {
+    type: Boolean,
+    default: false
   },
   vrtAccount: {
     type: mongoose.Schema.Types.ObjectId,

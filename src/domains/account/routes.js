@@ -57,9 +57,9 @@ router.post('/create-account', async (req, res, next) => {
       publicKey: keypair.publicKey,
       privateKey: keypair.privateKey,  // Store the private key directly; consider security implications
       vrtAccount: vrtAccount._id,
-      nftAccount: [],
-      tokenAccount: [],
-      stake: [],
+      nftAccount: null,  // Set this as null for now; we'll update it later
+      tokenAccounts: [], // Empty array for token accounts
+      stake: [],         // Empty array for stakes
     });
     await newAccount.save();
 
@@ -67,12 +67,29 @@ router.post('/create-account', async (req, res, next) => {
     vrtAccount.owner = newAccount._id;
     await vrtAccount.save();
 
-    // Respond with account info
+    // --- Create the NFTAccount ---
+    // Generate public key for NFTAccount
+    const nftAccountPublicKey = Keypair.generatePublicKey();
+
+    // Create the NFTAccount
+    const nftAccount = new NFTAccount({
+      owner: newAccount._id,    // Associate the NFTAccount with the new Account
+      publicKey: nftAccountPublicKey,
+      nfts: [],                  // Initially empty, can add NFTs later
+      transactions: [],         // Empty transactions for now
+    });
+    await nftAccount.save();
+
+    // Update the main account with the newly created NFTAccount
+    newAccount.nftAccount = nftAccount._id;
+    await newAccount.save();
+
+    // Respond with account info, including seed phrase and public key
     res.status(201).json({
       message: "Account created successfully",
       account: {
         seedPhrase: seedPhrase.seedPhrase,
-        publicKey: newAccount.publicKey,
+        publicKey: newAccount.publicKey
       }
     });
 
@@ -120,14 +137,12 @@ router.post('/recover-keypair', async (req, res, next) => {
   }
 });
 
-// Create a new account and wallet
 router.post('/', async (req, res, next) => {
   try {
     // Generate seed phrase and derive keypair from it
     const seedPhrase = Mnemonic.generate(); // Generate seed phrase
     const keypair = Keypair.fromSeedPhrase(seedPhrase.seedPhrase);  // Derive keypair from the seed phrase
 
-    // Hash the password before saving it
     const { password } = req.body;
     if (!password) {
       return res.status(400).json({ error: "Password is required" });
@@ -153,6 +168,9 @@ router.post('/', async (req, res, next) => {
 
     // Find native coin (VRT) for the user
     const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
+    if (!nativeCoin) {
+      return res.status(400).json({ error: "Native coin (VRT) not found" });
+    }
 
     // Generate public key for VRTAccount
     const vrtAccountPublickey = Keypair.generatePublicKey();
@@ -164,20 +182,24 @@ router.post('/', async (req, res, next) => {
     const vrtAccount = new VRTAccount({
       publicKey: vrtAccountPublickey,
       coin: nativeCoin._id,
-      owner: null,
+      owner: null,  // Owner will be set after Account creation
     });
     await vrtAccount.save();
 
-    // Create the main account
+    // Create the main Account
     const newAccount = new Account({
       publicKey: keypair.publicKey,
       privateKey: encryptedPrivateKey, 
       vrtAccount: vrtAccount._id,
       nftAccount: null,  // Placeholder, will be updated later
-      tokenAccount: [], 
-      stake: [],
+      tokenAccounts: [], // Array for multiple TokenAccounts
+      stake: [],         // Placeholder for stakes
     });
     await newAccount.save();
+
+    // Update VRTAccount owner
+    vrtAccount.owner = newAccount._id;
+    await vrtAccount.save();
 
     // Generate public key for TokenAccount
     const tokenAccountPublickey = Keypair.generatePublicKey();
@@ -189,21 +211,25 @@ router.post('/', async (req, res, next) => {
     const tokenAccount = new TokenAccount({
       owner: newAccount._id,
       tokens: [],  // Initialize with an empty array or actual Token references
-      publicKey: tokenAccountPublickey, // Generate or assign a suitable public key
+      publicKey: tokenAccountPublickey, // Generated public key
     });
-
     await tokenAccount.save();
 
     // Update Account with the TokenAccount reference
-    newAccount.tokenAccount.push(tokenAccount._id);
+    newAccount.tokenAccounts.push(tokenAccount._id);
     await newAccount.save();
 
+    // Generate public key for NFTAccount
+    const nftAccountPublicKey = Keypair.generatePublicKey();
+    if (!nftAccountPublicKey) {
+      throw new Error('NFTAccount publicKey is null or undefined');
+    }
 
-    // Create an NFTAccount
+    // Create the NFTAccount
     const nftAccount = new NFTAccount({
       owner: newAccount._id,
-      nft: [],  // Initialize with an empty array or actual NFT references
-      publicKey: Keypair.generatePublicKey(), // Generate or assign a suitable public key
+      nfts: [],  // Initialize with an empty array for future NFTs
+      publicKey: nftAccountPublicKey,  // Generated public key
     });
     await nftAccount.save();
 
@@ -215,13 +241,8 @@ router.post('/', async (req, res, next) => {
     const newWallet = new Wallet({
       passwordId: passwordEntry._id,
       account: newAccount._id,
-      nftAccount: nftAccount._id,  // Reference the created NFTAccount directly
     });
     await newWallet.save();
-
-    // Update VRTAccount owner
-    vrtAccount.owner = newAccount._id;
-    await vrtAccount.save();
 
     // Create JWT with the password document's ID
     const token = jwt.sign({ passwordId: passwordEntry._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -229,15 +250,18 @@ router.post('/', async (req, res, next) => {
     // Send JWT in an HttpOnly cookie
     res.cookie('session_token', token, {
       httpOnly: true,
-      secure: false,
+      secure: false,  // Change to true in production with HTTPS
       sameSite: 'Strict',
-      maxAge: 3600000,
+      maxAge: 3600000,  // 1 hour
     });
 
     // Respond with account and wallet info
     res.status(201).json({
-      message: "Account and Wallet created successfully",
-      seedPhrase: seedPhrase.seedPhrase,
+      message: "Wallet created successfully",
+      account: {
+        seedPhrase: seedPhrase.seedPhrase,
+        publicKey: newAccount.publicKey,
+      }
     });
 
   } catch (error) {

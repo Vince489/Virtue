@@ -6,7 +6,7 @@ const nftAccountSchema = new mongoose.Schema({
     ref: 'Account', 
     required: true,  // Ensure owner is required
   },
-  nft: [{
+  nfts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'NFT',
   }],
