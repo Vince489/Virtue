@@ -40,4 +40,25 @@ router.post("/init", async (req, res, next) => {
   }
 });
 
+// Get all blockchains
+router.get("/", async (req, res, next) => {
+  try {
+    const blockchains = await Blockchain.find();
+    res.json(blockchains);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a specific blockchain by name
+router.get("/:name", async (req, res, next) => {
+  try {
+    const { name } = req.params;
+    const blockchain = await Blockchain.findOne({ name });
+    res.json(blockchain);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

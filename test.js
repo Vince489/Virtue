@@ -11,4 +11,3 @@ const recoveredKeypair = Keypair.fromSeedPhrase(seedPhrase);
 console.log('Recovered Public Key:', recoveredKeypair.publicKey);
 console.log('Recovered Private Key:', recoveredKeypair.privateKey);
 
-module.exports = Keypair;

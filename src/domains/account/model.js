@@ -1,31 +1,39 @@
 const mongoose = require('mongoose');
 
 const accountSchema = new mongoose.Schema({
-  passwordId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Password',
-    unique: true
-  },
   publicKey: {
     type: String,
-    unique: true
+    unique: true,
+    required: true,
   },
   privateKey: {
     type: String,
+    unique: true,
+    required: true,
+    select: false, // Hide in queries
+  },
+  status: {
+    type: String,
+    enum: ['active', 'frozen', 'terminated'],
+    default: 'active',
   },
   vrtAccount: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'VRTAccount', 
+    ref: 'VRTAccount',
   },
-  tokenAccount: [{
+  tokenAccounts: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'TokenAccount', 
+    ref: 'TokenAccount',
   }],
+  nftAccount: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'NFTAccount',
+  },
   stake: [{
-    type: mongoose.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Stake',
-  }],  
-});
+  }],
+}, { timestamps: true });
 
 const Account = mongoose.model('Account', accountSchema);
 

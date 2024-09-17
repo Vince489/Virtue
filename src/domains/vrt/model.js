@@ -27,7 +27,7 @@ const VRTSchema = new mongoose.Schema({
   },
   icon: {
     type: String,
-    default: 'https://virtualrealitytoken.com/token.img'
+    default: 'https://vince489.github.io/virtronesports/img/VRT-Coin.png'
   },
   frozen: {
     type: Boolean,
@@ -40,6 +40,11 @@ const VRTSchema = new mongoose.Schema({
   decimals: {
     type: Number,
     default: 8,
+    required: true
+  },
+  protocol: {
+    type: String,
+    default: 'VRC-44',
     required: true
   },
 });

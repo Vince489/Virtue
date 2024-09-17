@@ -7,7 +7,8 @@ const Account = require("./model");
 const VRTAccount = require("./../vrtAccount/model");
 const Password = require("./../password/model");
 const VRT = require("./../vrt/model");
-const Token = require("./../token/model");
+const Wallet = require("./../wallet/model");
+const NFTAccount = require("./../nftAccount/model");
 const TokenAccount = require("./../tokenAccount/model");
 const { encryptData } = require("./../../utils/encrypt-decrypt");
 
@@ -18,8 +19,108 @@ const cookieParser = require('cookie-parser');
 // Use cookie-parser middleware
 router.use(cookieParser());
 
+// Create a new account
+router.post('/create-account', async (req, res, next) => {
+  try {
+    // Generate a seed phrase and derive a keypair from it
+    const seedPhrase = Mnemonic.generate(); // Generate seed phrase
+    const keypair = Keypair.fromSeedPhrase(seedPhrase.seedPhrase);  // Derive keypair from the seed phrase
 
-// Create a new account 
+    // Check for duplicate public key
+    const existingAccount = await Account.findOne({ publicKey: keypair.publicKey });
+    if (existingAccount) {
+      return res.status(400).json({ error: `Public key ${keypair.publicKey} already exists` });
+    }
+
+    // Find native coin (VRT) for the user
+    const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
+    if (!nativeCoin) {
+      return res.status(400).json({ error: "Native coin (VRT) not found" });
+    }
+
+    // Generate public key for VRTAccount
+    const vrtAccountPublickey = Keypair.generatePublicKey();
+    if (!vrtAccountPublickey) {
+      throw new Error('VRTAccount publicKey is null or undefined');
+    }
+
+    // Create the VRTAccount
+    const vrtAccount = new VRTAccount({
+      publicKey: vrtAccountPublickey,
+      coin: nativeCoin._id,
+      owner: null,
+    });
+    await vrtAccount.save();
+
+    // Create the main account without a password
+    const newAccount = new Account({
+      publicKey: keypair.publicKey,
+      privateKey: keypair.privateKey,  // Store the private key directly; consider security implications
+      vrtAccount: vrtAccount._id,
+      nftAccount: [],
+      tokenAccount: [],
+      stake: [],
+    });
+    await newAccount.save();
+
+    // Update VRTAccount owner
+    vrtAccount.owner = newAccount._id;
+    await vrtAccount.save();
+
+    // Respond with account info
+    res.status(201).json({
+      message: "Account created successfully",
+      account: {
+        seedPhrase: seedPhrase.seedPhrase,
+        publicKey: newAccount.publicKey,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating account:', error);  // More detailed error logging
+    next(error);
+  }
+});
+
+// Recover a keypair using a seed phrase
+router.post('/recover-keypair', async (req, res, next) => {
+  try {
+    // Extract seed phrase from the request body
+    const { seedPhrase } = req.body;
+    if (!seedPhrase) {
+      return res.status(400).json({ error: "Seed phrase is required" });
+    }
+
+    // Convert seed phrase to lowercase
+    const normalizedSeedPhrase = seedPhrase.toLowerCase();
+
+    // Split the seed phrase into words
+    const seedPhraseWords = normalizedSeedPhrase.split(/\s+/);
+
+    // Check if seed phrase has exactly 12 words
+    if (seedPhraseWords.length !== 12) {
+      return res.status(400).json({ error: "Seed phrase must contain exactly 12 words" });
+    }
+
+    // Derive keypair from the seed phrase
+    const keypair = Keypair.fromSeedPhrase(normalizedSeedPhrase);
+
+    // Respond with keypair info
+    res.json({
+      message: "Keypair recovered successfully",
+      keypair: {
+        publicKey: keypair.publicKey,
+        privateKey: keypair.privateKey,
+      }
+    });
+
+  } catch (error) {
+    console.error('Error recovering keypair:', error);  // More detailed error logging
+    next(error);
+  }
+});
+
+// Create a new account and wallet
 router.post('/', async (req, res, next) => {
   try {
     // Generate seed phrase and derive keypair from it
@@ -53,9 +154,8 @@ router.post('/', async (req, res, next) => {
     // Find native coin (VRT) for the user
     const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
 
-    // Generate publickey for VRTAccount
+    // Generate public key for VRTAccount
     const vrtAccountPublickey = Keypair.generatePublicKey();
-    // Log keypair details
     if (!vrtAccountPublickey) {
       throw new Error('VRTAccount publicKey is null or undefined');
     }
@@ -70,14 +170,54 @@ router.post('/', async (req, res, next) => {
 
     // Create the main account
     const newAccount = new Account({
-      passwordId: passwordEntry._id,
       publicKey: keypair.publicKey,
-      privateKey: encryptedPrivateKey, // Store encrypted private key
+      privateKey: encryptedPrivateKey, 
       vrtAccount: vrtAccount._id,
-      tokenAccount: [], // Initialize as an empty array
+      nftAccount: null,  // Placeholder, will be updated later
+      tokenAccount: [], 
       stake: [],
     });
     await newAccount.save();
+
+    // Generate public key for TokenAccount
+    const tokenAccountPublickey = Keypair.generatePublicKey();
+    if (!tokenAccountPublickey) {
+      throw new Error('TokenAccount publicKey is null or undefined');
+    }
+
+    // Create the TokenAccount
+    const tokenAccount = new TokenAccount({
+      owner: newAccount._id,
+      tokens: [],  // Initialize with an empty array or actual Token references
+      publicKey: tokenAccountPublickey, // Generate or assign a suitable public key
+    });
+
+    await tokenAccount.save();
+
+    // Update Account with the TokenAccount reference
+    newAccount.tokenAccount.push(tokenAccount._id);
+    await newAccount.save();
+
+
+    // Create an NFTAccount
+    const nftAccount = new NFTAccount({
+      owner: newAccount._id,
+      nft: [],  // Initialize with an empty array or actual NFT references
+      publicKey: Keypair.generatePublicKey(), // Generate or assign a suitable public key
+    });
+    await nftAccount.save();
+
+    // Update Account with the NFTAccount reference
+    newAccount.nftAccount = nftAccount._id;
+    await newAccount.save();
+
+    // Create a new Wallet document
+    const newWallet = new Wallet({
+      passwordId: passwordEntry._id,
+      account: newAccount._id,
+      nftAccount: nftAccount._id,  // Reference the created NFTAccount directly
+    });
+    await newWallet.save();
 
     // Update VRTAccount owner
     vrtAccount.owner = newAccount._id;
@@ -94,111 +234,17 @@ router.post('/', async (req, res, next) => {
       maxAge: 3600000,
     });
 
-    // Respond with account info
+    // Respond with account and wallet info
     res.status(201).json({
-      message: "Account created successfully",
-      account: {
-        seedPhrase: seedPhrase.seedPhrase,
-        publicKey: newAccount.publicKey,
-      },
+      message: "Account and Wallet created successfully",
+      seedPhrase: seedPhrase.seedPhrase,
     });
 
   } catch (error) {
-    console.error('Error creating account:', error);  // More detailed error logging
+    console.error('Error creating account and wallet:', error);  // More detailed error logging
     next(error);
   }
 });
-
-
-// Create a new account 
-router.post('/1', async (req, res, next) => {
-  try {
-    // Generate seed phrase and derive keypair from it
-    const seedPhrase = Mnemonic.generate(); // Generate seed phrase
-    const keypair = Keypair.fromSeedPhrase(seedPhrase.seedPhrase);  // Derive keypair from the seed phrase
-
-    // Hash the password before saving it
-    const { password } = req.body;
-    if (!password) {
-      return res.status(400).json({ error: "Password is required" });
-    }
-
-    // Check for duplicate public key
-    const existingAccount = await Account.findOne({ publicKey: keypair.publicKey });
-    if (existingAccount) {
-      return res.status(400).json({ error: `Public key ${keypair.publicKey} already exists` });
-    }
-
-    // Hash the password for security
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create a new Password entry in the DB
-    const passwordEntry = new Password({
-      hashedPassword: hashedPassword,
-    });
-    await passwordEntry.save();
-
-    // Find native coin (VRT) for the user
-    const nativeCoin = await VRT.findOne({ symbol: 'VRT' });
-
-    // Generate keypair for VRTAccount
-    const vrtAccountKeypair = Keypair.generate();
-
-    // Log keypair details
-    if (!vrtAccountKeypair.keypair.publicKey) {
-      throw new Error('VRTAccount publicKey is null or undefined');
-    }
-
-    // Create the VRTAccount
-    const vrtAccount = new VRTAccount({
-      publicKey: vrtAccountKeypair.keypair.publicKey,
-      coin: nativeCoin._id,
-      owner: null,
-    });
-    await vrtAccount.save();
-
-    // Create the main account
-    const newAccount = new Account({
-      passwordId: passwordEntry._id,
-      publicKey: keypair.publicKey,
-      privateKey: keypair.privateKey,
-      vrtAccount: vrtAccount._id,
-      tokenAccount: [], // Initialize as an empty array
-      stake: [],
-    });
-    await newAccount.save();
-
-    // Update VRTAccount owner
-    vrtAccount.owner = newAccount._id;
-    await vrtAccount.save();
-
-    // Create JWT with the password document's ID
-    const token = jwt.sign({ passwordId: passwordEntry._id.toString() }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
-    // Send JWT in an HttpOnly cookie
-    res.cookie('session_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'Strict',
-      maxAge: 3600000,
-    });
-
-    // Respond with account info
-    res.status(201).json({
-      message: "Account created successfully",
-      account: {
-        seedPhrase: seedPhrase.seedPhrase,
-        publicKey: newAccount.publicKey,
-      },
-    });
-
-  } catch (error) {
-    console.error('Error creating account:', error);  // More detailed error logging
-    next(error);
-  }
-});
-
-
 
 // Login route
 router.post("/login", async (req, res, next) => {
@@ -225,6 +271,18 @@ router.post("/login", async (req, res, next) => {
     }
     const passwordId = decoded.passwordId;
 
+    // Retrieve the wallet using passwordId
+    const wallet = await Wallet.findOne({ passwordId }).populate("account");
+    if (!wallet) {
+      return res.status(404).json({ error: "Wallet not found" });
+    }
+
+    // Retrieve the associated account from the wallet
+    const account = wallet.account;
+    if (!account) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
     // Retrieve the password document from MongoDB
     const passwordEntry = await Password.findById(passwordId);
     if (!passwordEntry) {
@@ -237,21 +295,18 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid password" });
     }
 
-    // Find the associated account (if needed)
-    const account = await Account.findOne({ passwordId: passwordId }).populate("vrtAccount");
-    console.log('Account:', account); // Debugging line
-    if (!account) {
-      return res.status(404).json({ error: "Account not found" });
-    }
-
     // Respond with account details
     res.json({
-      message: "Login successful"
+      message: "Login successful",
+      account: {
+        publicKey: account.publicKey,
+      }
     });
 
   } catch (error) {
     next(error);
   }
 });
+
 
 module.exports = router;

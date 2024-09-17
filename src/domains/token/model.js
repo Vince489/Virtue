@@ -12,10 +12,6 @@ const tokenSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  address: {
-    type: String,
-    required: true,
-  },
   uri: {
     type: String,
     required: true,
@@ -44,6 +40,14 @@ const tokenSchema = new mongoose.Schema({
   decimals: {
     type: Number,
     default: 4,
+  },
+  price: {
+    type: Number,
+    default: null,
+  },
+  protocol: {
+    type: String,
+    default: 'VRC-20',
   },
 });
 

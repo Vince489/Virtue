@@ -1,24 +1,19 @@
 const mongoose = require('mongoose');
 
-const tokenAccountSchema = new mongoose.Schema({
+const nftAccountSchema = new mongoose.Schema({
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Account', 
     required: true,  // Ensure owner is required
   },
-  tokens: [{
+  nft: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Token',
-    required: true,    
+    ref: 'NFT',
   }],
   publicKey: {
     type: String,
     required: true,
     unique: true,
-  },
-  balance: {
-    type: Number,
-    default: 0,
   },
   isFrozen: {
     type: Boolean,
@@ -34,10 +29,6 @@ const tokenAccountSchema = new mongoose.Schema({
   }],
 });
 
-// Indexes for performance improvements
-tokenAccountSchema.index({ owner: 1 });
-tokenAccountSchema.index({ token: 1 });
+const NFTAccount = mongoose.model('NFTAccount', nftAccountSchema);
 
-const TokenAccount = mongoose.model('TokenAccount', tokenAccountSchema);
-
-module.exports = TokenAccount;
+module.exports = NFTAccount;

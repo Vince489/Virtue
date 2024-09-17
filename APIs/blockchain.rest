@@ -2,6 +2,10 @@
 // Get all blocks
 GET http://localhost:5700/api/v2/block
 
+###
+// Get all blocks
+GET http://localhost:5700/api/v2/blockchain
+
 
 
 ###
@@ -29,12 +33,17 @@ POST http://localhost:5700/api/v2/vrt
 
 ###
 // Create a new account
-POST http://localhost:5700/api/v2/account
+POST http://localhost:5700/api/v2/account/create-account
+
+###
+// Create a new wallet
+POST http://localhost:5700/api/v2/account/
 Content-Type: application/json
 
 {
-  "password": "1212"
+  "password": "2233"
 }
+
 
 ###
 // Login
@@ -42,7 +51,7 @@ POST http://localhost:5700/api/v2/account/login
 Content-Type: application/json
 
 {
-  "password": "1212"
+  "password": "2233"
 }
 
 
@@ -58,5 +67,42 @@ Content-Type: application/json
   "mintAuthority": "ZmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdd",
   "freezeAuthority": "ZmbgmWKToM3VZBRDjfKL6ptAsPqhpGGSNtEgVjojLSdd"
 }
+
+###
+// Create Management Contract
+POST http://localhost:5700/api/v2/managerContract
+Content-Type: application/json
+
+{
+  "fighter": "64f134d8123456f6f987ab00", 
+  "manager": "64f235a46789a4d112345ff9", 
+  "term": {
+    "totalFights": 6
+  },
+  "compensation": {
+    "perFightMin": 1000, 
+    "bonuses": [
+      {
+        "title": "KO Bonus",
+        "amount": 1000
+      }
+    ]
+  },
+  "obligations": [
+    "Must fight at least once every two weeks",
+    "Complete 1 mandatory training session before each fight"
+  ],
+  "perks": [
+    "Access to private training facility",
+    "Sponsorship opportunities"
+  ],
+  "terminationClauses": [
+    "Manager may terminate if fighter misses two scheduled fights",
+    "Fighter can terminate if compensation is delayed"
+  ],
+  "fighterSignature": null, 
+  "managerSignature": "55DTMPqsNxoqXmipToA75RXwQWKoASzys8doZM56ERSMrRHmUX9oUqbzidSUryAwdpYCgA31pRmQFPDYU5Lh8pBs"
+}
+
 
 
