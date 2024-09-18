@@ -41,7 +41,7 @@ POST http://localhost:5700/api/v2/account/
 Content-Type: application/json
 
 {
-  "password": "2233"
+  "password": "228811"
 }
 
 
@@ -51,8 +51,13 @@ POST http://localhost:5700/api/v2/account/login
 Content-Type: application/json
 
 {
-  "password": "2233"
+  "password": "228811"
 }
+
+###
+// Logout
+POST http://localhost:5700/api/v2/account/logout
+
 
 
 ###

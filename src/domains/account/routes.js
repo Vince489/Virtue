@@ -137,6 +137,7 @@ router.post('/recover-keypair', async (req, res, next) => {
   }
 });
 
+// Create a new wallet
 router.post('/', async (req, res, next) => {
   try {
     // Generate seed phrase and derive keypair from it
@@ -296,7 +297,8 @@ router.post("/login", async (req, res, next) => {
     const passwordId = decoded.passwordId;
 
     // Retrieve the wallet using passwordId
-    const wallet = await Wallet.findOne({ passwordId }).populate("account");
+    const wallet = await Wallet.findOne({ passwordId }).populate('account');
+    console.log("Wallet:", wallet); // Debugging line
     if (!wallet) {
       return res.status(404).json({ error: "Wallet not found" });
     }
@@ -322,15 +324,22 @@ router.post("/login", async (req, res, next) => {
     // Respond with account details
     res.json({
       message: "Login successful",
-      account: {
-        publicKey: account.publicKey,
-      }
+      publicKey: account.publicKey,
     });
 
   } catch (error) {
+    console.error('Error during login:', error);  // More detailed error logging
     next(error);
   }
 });
+
+// Logout route
+router.post("/logout", async (req, res, next) => {
+  // Clear the session cookie
+  res.clearCookie("session_token");
+  res.json({ message: "Logout successful" });
+});
+
 
 
 module.exports = router;

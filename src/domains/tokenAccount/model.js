@@ -1,24 +1,33 @@
 const mongoose = require('mongoose');
+const Token = require('./token');  // Adjust the path as needed
 
-const tokenAccountSchema = new mongoose.Schema({
-  owner: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Account', 
-    required: true,  // Ensure owner is required
-  },
-  tokens: [{
+const tokenDetailSchema = new mongoose.Schema({
+  token: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Token',
-    required: true,    
-  }],
-  publicKey: {
-    type: String,
     required: true,
-    unique: true,
   },
   balance: {
     type: Number,
     default: 0,
+  },
+  transactions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+  }],
+});
+
+const tokenAccountSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Account',
+    required: true,
+  },
+  tokens: [tokenDetailSchema], // Array of token details
+  publicKey: {
+    type: String,
+    required: true,
+    unique: true,
   },
   isFrozen: {
     type: Boolean,
@@ -28,15 +37,10 @@ const tokenAccountSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  transactions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Transaction',
-  }],
 });
 
 // Indexes for performance improvements
 tokenAccountSchema.index({ owner: 1 });
-tokenAccountSchema.index({ token: 1 });
 
 const TokenAccount = mongoose.model('TokenAccount', tokenAccountSchema);
 
